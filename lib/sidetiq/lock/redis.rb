@@ -15,7 +15,14 @@ module Sidetiq
 
       def initialize(key, timeout = Sidetiq.config.lock_expire)
         @key = extract_key(key)
-        @timeout = timeout
+        @millisecond_precision = Sidekiq.redis do |redis|
+          redis.info['redis_version'] >= '2.6'
+        end
+        @timeout = if millisecond_precision?
+                     timeout
+                   else
+                     timeout > 1000 ? timeout / 1000 : 1
+                   end
       end
 
       def synchronize
@@ -51,6 +58,10 @@ module Sidetiq
         end
       end
 
+      def millisecond_precision?
+        !!@millisecond_precision
+      end
+
       def lock
         Sidekiq.redis do |redis|
           acquired = false
@@ -59,7 +70,12 @@ module Sidetiq
             if !redis.exists(key)
               acquired = !!redis.multi do |multi|
                 meta = MetaData.for_new_lock(key)
-                multi.psetex(key, timeout, meta.to_json)
+
+                if millisecond_precision?
+                  multi.psetex(key, timeout, meta.to_json)
+                else
+                  multi.setex(key, timeout, meta.to_json)
+                end
               end
             end
           end
