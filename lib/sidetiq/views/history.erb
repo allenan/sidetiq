@@ -26,7 +26,7 @@
         <tr class="<%= 'error' if entry[:status] == 'failure' %>">
           <td><%= entry[:status].capitalize %></td>
           <td><%= Time.parse(entry[:timestamp]).strftime("%m/%d/%Y %I:%M:%S%p") %></td>
-          <td><%= entry[:runtime].round(3) %> s</td>
+          <td><%= entry[:runtime].round(3) + "s" if entry[:runtime] %></td>
           <td>
             <% if entry[:status] == 'failure' %>
             <a class="backtrace" href="#" onclick="$(this).next().toggle(); return false">
